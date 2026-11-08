@@ -7,3 +7,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Project conventions
+
+- Package manager: **pnpm** (never npm/yarn). Add deps with `pnpm add`.
+- Lint + format: **Biome** (no ESLint/Prettier). Run `pnpm format` before committing; `pnpm lint` must pass.
+- UI: Tailwind CSS v4 + **shadcn/ui** (Base UI primitives). Add components with `pnpm dlx shadcn@latest add <name>`; they land in `src/components/ui/` and may be edited. Use `cn()` from `@/lib/utils` to merge classes.
+- Tests: **Vitest** + Testing Library for unit tests (`*.test.tsx` next to the code, `pnpm test`); **Playwright** for end-to-end tests in `e2e/` (`pnpm test:e2e`).
+- Before finishing a change run: `pnpm lint && pnpm typecheck && pnpm test`.
