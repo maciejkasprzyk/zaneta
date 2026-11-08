@@ -5,14 +5,11 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 First, run the development server:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
+
+Other scripts: `pnpm lint` / `pnpm format` (Biome), `pnpm typecheck`, `pnpm test` (Vitest), `pnpm test:e2e` (Playwright).
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
