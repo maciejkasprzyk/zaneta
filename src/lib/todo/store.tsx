@@ -10,12 +10,15 @@ import {
   useRef,
   useState,
 } from "react";
+import { toISODate } from "./dates";
 import { LocalStorageTodoRepository } from "./local-storage-repository";
+import { nextOccurrence } from "./recurrence";
 import { type TodoAction, todoReducer } from "./reducer";
 import type { TodoRepository } from "./repository";
-import { topPosition } from "./sort";
+import { topPosition, topStarredPosition } from "./sort";
 import {
   emptyState,
+  type Recurrence,
   type Settings,
   type SortMode,
   type Task,
@@ -32,6 +35,7 @@ export interface TaskInput {
   description: string;
   dueDate: string | null;
   effortMinutes: number | null;
+  recurrence: Recurrence | null;
   starred: boolean;
 }
 
@@ -104,8 +108,16 @@ function useTodoStoreValue(repository: TodoRepository | null) {
         const task: Task = {
           id: newId(),
           ...input,
+          // A repeating task always has a date to count from.
+          dueDate:
+            input.recurrence && !input.dueDate
+              ? toISODate(new Date())
+              : input.dueDate,
           title: input.title.trim(),
           starredAt: input.starred ? now : null,
+          starredPosition: input.starred
+            ? topStarredPosition(stateRef.current.tasks)
+            : null,
           completed: false,
           completedAt: null,
           position: topPosition(stateRef.current.tasks, input.listId),
@@ -121,8 +133,15 @@ function useTodoStoreValue(repository: TodoRepository | null) {
         const now = nowIso();
         const patch: Partial<Task> = { ...input, updatedAt: now };
         if (input.title !== undefined) patch.title = input.title.trim();
+        const recurrence = input.recurrence ?? task.recurrence;
+        if (recurrence && !(input.dueDate ?? task.dueDate)) {
+          patch.dueDate = toISODate(new Date());
+        }
         if (input.starred !== undefined && input.starred !== task.starred) {
           patch.starredAt = input.starred ? now : null;
+          patch.starredPosition = input.starred
+            ? topStarredPosition(stateRef.current.tasks)
+            : null;
         }
         if (input.listId !== undefined && input.listId !== task.listId) {
           patch.position = topPosition(stateRef.current.tasks, input.listId);
@@ -134,6 +153,31 @@ function useTodoStoreValue(repository: TodoRepository | null) {
         if (!task) return;
         const now = nowIso();
         const completed = !task.completed;
+        // Completing a repeating task schedules the next occurrence, like
+        // in Google Tasks; the completed copy no longer repeats.
+        if (completed && task.recurrence) {
+          const next: Task = {
+            ...task,
+            id: newId(),
+            dueDate: nextOccurrence(task.dueDate, task.recurrence),
+            position: topPosition(stateRef.current.tasks, task.listId),
+            starredPosition: task.starred ? task.starredPosition : null,
+            createdAt: now,
+            updatedAt: now,
+          };
+          commit({ type: "taskCreated", task: next });
+          commit({
+            type: "taskUpdated",
+            id,
+            patch: {
+              completed: true,
+              completedAt: now,
+              recurrence: null,
+              updatedAt: now,
+            },
+          });
+          return;
+        }
         commit({
           type: "taskUpdated",
           id,
@@ -158,6 +202,9 @@ function useTodoStoreValue(repository: TodoRepository | null) {
           patch: {
             starred: !task.starred,
             starredAt: task.starred ? null : now,
+            starredPosition: task.starred
+              ? null
+              : topStarredPosition(stateRef.current.tasks),
             updatedAt: now,
           },
         });
@@ -165,6 +212,15 @@ function useTodoStoreValue(repository: TodoRepository | null) {
       deleteTask: (id: string) => commit({ type: "taskDeleted", id }),
       reorderTasks: (listId: string, orderedIds: string[]) =>
         commit({ type: "tasksReordered", listId, orderedIds }),
+      reorderStarred: (orderedIds: string[]) =>
+        commit({ type: "starredReordered", orderedIds }),
+      setListHidden: (listId: string, hidden: boolean) => {
+        const current = stateRef.current.settings.hiddenListIds ?? [];
+        const hiddenListIds = hidden
+          ? [...new Set([...current, listId])]
+          : current.filter((id) => id !== listId);
+        commit({ type: "settingsUpdated", patch: { hiddenListIds } });
+      },
       clearCompleted: (listId: string) =>
         commit({ type: "completedCleared", listId }),
       updateSettings: (patch: Partial<Settings>) =>

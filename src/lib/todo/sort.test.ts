@@ -25,7 +25,15 @@ describe("sortTasks", () => {
     ]);
   });
 
-  it("orders the starred view by most recently starred", () => {
+  it("orders the starred view by its own custom order", () => {
+    const x = makeTask({ title: "x", position: 0, starredPosition: 2 });
+    const y = makeTask({ title: "y", position: 1, starredPosition: -1 });
+    expect(
+      sortTasks([x, y], "custom", { starredView: true }).map((t) => t.title),
+    ).toEqual(["y", "x"]);
+  });
+
+  it("falls back to star time for tasks without a starred position", () => {
     const x = makeTask({ title: "x", starredAt: "2026-11-01T00:00:00Z" });
     const y = makeTask({ title: "y", starredAt: "2026-11-05T00:00:00Z" });
     expect(

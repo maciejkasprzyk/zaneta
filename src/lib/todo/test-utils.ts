@@ -13,6 +13,7 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     effortMinutes: null,
     starred: false,
     starredAt: null,
+    starredPosition: null,
     completed: false,
     completedAt: null,
     position: counter,

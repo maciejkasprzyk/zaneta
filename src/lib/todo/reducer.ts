@@ -20,6 +20,7 @@ export type TodoAction =
   | { type: "taskUpdated"; id: string; patch: TaskPatch }
   | { type: "taskDeleted"; id: string }
   | { type: "tasksReordered"; listId: string; orderedIds: string[] }
+  | { type: "starredReordered"; orderedIds: string[] }
   | { type: "completedCleared"; listId: string }
   | { type: "settingsUpdated"; patch: Partial<Settings> }
   | { type: "stateReplaced"; state: TodoState };
@@ -64,6 +65,16 @@ export function todoReducer(state: TodoState, action: TodoAction): TodoState {
           return t.listId === action.listId && position !== undefined
             ? { ...t, position }
             : t;
+        }),
+      };
+    }
+    case "starredReordered": {
+      const index = new Map(action.orderedIds.map((id, i) => [id, i]));
+      return {
+        ...state,
+        tasks: state.tasks.map((t) => {
+          const starredPosition = index.get(t.id);
+          return starredPosition !== undefined ? { ...t, starredPosition } : t;
         }),
       };
     }

@@ -26,7 +26,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -64,6 +64,7 @@ export function TaskView({
   onRenameList,
   onDeleteList,
   canDeleteList,
+  headingLevel = 1,
 }: {
   view: ResolvedView;
   onAddTask: () => void;
@@ -71,8 +72,13 @@ export function TaskView({
   onRenameList: () => void;
   onDeleteList: () => void;
   canDeleteList: boolean;
+  /** 1 when the view fills the page, 2 for a column on the desktop board. */
+  headingLevel?: 1 | 2;
 }) {
   const store = useTodos();
+  const titleId = useId();
+  const Heading = headingLevel === 1 ? "h1" : "h2";
+  const GroupHeading = headingLevel === 1 ? "h2" : "h3";
   const [showCompleted, setShowCompleted] = useState(false);
   const listNames = new Map(store.state.lists.map((l) => [l.id, l.name]));
   const totalEffort = sumEffort(view.active);
@@ -92,15 +98,15 @@ export function TaskView({
     }) satisfies Partial<TaskItemProps>;
 
   return (
-    <section aria-labelledby="view-title" className="flex flex-col gap-2">
+    <section aria-labelledby={titleId} className="flex flex-col gap-2">
       <header className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <h1
-            id="view-title"
+          <Heading
+            id={titleId}
             className="truncate text-xl font-semibold tracking-tight"
           >
             {view.title}
-          </h1>
+          </Heading>
           <p className="text-sm text-muted-foreground">
             {pluralTasks(view.active.length)}
             {totalEffort > 0 && <> · łącznie {formatEffort(totalEffort)}</>}
@@ -130,7 +136,7 @@ export function TaskView({
                 onValueChange={(value) => setSortMode(value as SortMode)}
               >
                 <DropdownMenuRadioItem value="custom" closeOnClick>
-                  {isStarred ? "Kolejność oznaczenia" : "Moja kolejność"}
+                  Moja kolejność
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="date" closeOnClick>
                   Data
@@ -194,29 +200,27 @@ export function TaskView({
       {view.sortMode === "date" ? (
         groupByDueDate(view.active).map((group) => (
           <div key={group.key} className="flex flex-col">
-            <h2
+            <GroupHeading
               className={cn(
                 "px-3 pt-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase",
                 group.overdue && "text-red-600 dark:text-red-400",
               )}
             >
               {group.label}
-            </h2>
+            </GroupHeading>
             {group.tasks.map((task) => (
               <TaskItem key={task.id} task={task} {...itemProps(task.listId)} />
             ))}
           </div>
         ))
-      ) : isStarred ? (
-        <div className="flex flex-col">
-          {view.active.map((task) => (
-            <TaskItem key={task.id} task={task} {...itemProps(task.listId)} />
-          ))}
-        </div>
       ) : (
         <SortableTasks
           ids={view.active.map((t) => t.id)}
-          onReorder={(ids) => store.reorderTasks(view.id, ids)}
+          onReorder={(ids) =>
+            isStarred
+              ? store.reorderStarred(ids)
+              : store.reorderTasks(view.id, ids)
+          }
         >
           {view.active.map((task) => (
             <SortableTaskItem

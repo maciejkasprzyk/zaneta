@@ -14,8 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { type EffortUnit, splitEffort, toMinutes } from "@/lib/todo/effort";
+import { formatRecurrence } from "@/lib/todo/recurrence";
 import type { TaskInput } from "@/lib/todo/store";
-import type { Task, TaskList } from "@/lib/todo/types";
+import type { RecurrenceUnit, Task, TaskList } from "@/lib/todo/types";
 import { cn } from "@/lib/utils";
 
 export const nativeSelectClass =
@@ -62,6 +63,15 @@ function TaskForm({
   const [effortUnit, setEffortUnit] = useState<EffortUnit>(initialEffort.unit);
   const [listId, setListId] = useState(task?.listId ?? defaultListId);
   const [starred, setStarred] = useState(task?.starred ?? defaultStarred);
+  const [repeatUnit, setRepeatUnit] = useState<RecurrenceUnit | "none">(
+    task?.recurrence?.unit ?? "none",
+  );
+  const [repeatInterval, setRepeatInterval] = useState(
+    String(task?.recurrence?.interval ?? 1),
+  );
+  const interval = Math.max(1, Math.round(Number(repeatInterval) || 1));
+  const recurrence =
+    repeatUnit === "none" ? null : { interval, unit: repeatUnit };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -73,6 +83,7 @@ function TaskForm({
       effortMinutes: effortValue
         ? toMinutes(Number(effortValue.replace(",", ".")), effortUnit)
         : null,
+      recurrence,
       listId,
       starred,
     });
@@ -155,6 +166,47 @@ function TaskForm({
               <option value="h">godz.</option>
             </select>
           </div>
+        </div>
+      </div>
+
+      <div className="grid gap-1.5">
+        <Label htmlFor={`${id}-repeat`}>Powtarzanie</Label>
+        <div className="flex flex-wrap items-center gap-2">
+          {recurrence && (
+            <>
+              <span className="text-sm">Co</span>
+              <Input
+                aria-label="Co ile powtarzać"
+                type="number"
+                min={1}
+                step={1}
+                className="w-20"
+                value={repeatInterval}
+                onChange={(e) => setRepeatInterval(e.target.value)}
+              />
+            </>
+          )}
+          <select
+            id={`${id}-repeat`}
+            className={nativeSelectClass}
+            value={repeatUnit}
+            onChange={(e) =>
+              setRepeatUnit(e.target.value as RecurrenceUnit | "none")
+            }
+          >
+            <option value="none">Nie powtarzaj</option>
+            <option value="day">dni</option>
+            <option value="week">tygodnie</option>
+            <option value="month">miesiące</option>
+            <option value="year">lata</option>
+          </select>
+          {recurrence && (
+            <span className="text-xs text-muted-foreground">
+              {formatRecurrence(recurrence)}, licząc od terminu
+              {dueDate ? "" : " (dzisiaj)"}. Po ukończeniu pojawi się kolejne
+              zadanie.
+            </span>
+          )}
         </div>
       </div>
 

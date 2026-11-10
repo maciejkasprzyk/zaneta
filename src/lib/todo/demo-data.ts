@@ -1,5 +1,5 @@
 import { toISODate } from "./dates";
-import type { Task, TaskList, TodoState } from "./types";
+import type { Recurrence, Task, TaskList, TodoState } from "./types";
 
 /**
  * Dev-only tools (like demo data) are shown everywhere except the
@@ -16,6 +16,7 @@ interface DemoTask {
   effort?: number;
   starred?: boolean;
   completed?: boolean;
+  repeat?: Recurrence;
 }
 
 const DEMO: { name: string; sortMode?: "date"; tasks: DemoTask[] }[] = [
@@ -28,6 +29,7 @@ const DEMO: { name: string; sortMode?: "date"; tasks: DemoTask[] }[] = [
         due: -1,
         effort: 20,
         starred: true,
+        repeat: { interval: 1, unit: "month" },
       },
       {
         title: "Zakupy spożywcze",
@@ -68,7 +70,13 @@ const DEMO: { name: string; sortMode?: "date"; tasks: DemoTask[] }[] = [
         effort: 60,
       },
       { title: "Posprzątać garaż", effort: 240 },
-      { title: "Podlać kwiaty", due: 1, effort: 5, starred: true },
+      {
+        title: "Podlać kwiaty",
+        due: 1,
+        effort: 5,
+        starred: true,
+        repeat: { interval: 3, unit: "day" },
+      },
       { title: "Wymienić żarówkę w przedpokoju", effort: 10, completed: true },
     ],
   },
@@ -106,8 +114,10 @@ export function createDemoState(now: Date = new Date()): TodoState {
         description: t.description ?? "",
         dueDate,
         effortMinutes: t.effort ?? null,
+        recurrence: t.repeat ?? null,
         starred: Boolean(t.starred),
         starredAt,
+        starredPosition: t.starred ? li * 10 + ti : null,
         completed: Boolean(t.completed),
         completedAt: t.completed ? iso : null,
         position: ti,
@@ -119,6 +129,10 @@ export function createDemoState(now: Date = new Date()): TodoState {
   return {
     lists,
     tasks,
-    settings: { activeView: lists[0].id, starredSortMode: "custom" },
+    settings: {
+      activeView: lists[0].id,
+      starredSortMode: "custom",
+      hiddenListIds: [],
+    },
   };
 }

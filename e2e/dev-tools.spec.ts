@@ -1,5 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
 
+// Phone layout: one list at a time.
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
 const viewTitle = (page: Page) => page.getByRole("heading", { level: 1 });
 
 async function swipe(page: Page, dx: number) {

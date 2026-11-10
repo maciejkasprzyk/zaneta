@@ -7,6 +7,7 @@ import { useId, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { formatDateShort } from "@/lib/todo/dates";
 import { formatEffort, sumEffort } from "@/lib/todo/effort";
+import { formatRecurrence } from "@/lib/todo/recurrence";
 import { groupByDueDate } from "@/lib/todo/sort";
 import { useTodos } from "@/lib/todo/store";
 import type { Task } from "@/lib/todo/types";
@@ -71,13 +72,22 @@ export function PrintView() {
                 <span title="Oznaczone gwiazdką">★</span>
               )}
             </div>
-            {(task.dueDate || task.effortMinutes || showListName) && (
+            {(task.dueDate ||
+              task.effortMinutes ||
+              task.recurrence ||
+              showListName) && (
               <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs text-neutral-600">
                 {task.dueDate && (
                   <span>Termin: {formatDateShort(task.dueDate)}</span>
                 )}
                 {task.effortMinutes ? (
                   <span>Nakład: {formatEffort(task.effortMinutes)}</span>
+                ) : null}
+                {task.recurrence ? (
+                  <span>
+                    Powtarza się:{" "}
+                    {formatRecurrence(task.recurrence).toLowerCase()}
+                  </span>
                 ) : null}
                 {showListName && (
                   <span>Lista: {listNames.get(task.listId)}</span>

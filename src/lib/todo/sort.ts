@@ -4,7 +4,9 @@ import type { SortMode, Task } from "./types";
 const byPosition = (a: Task, b: Task) =>
   a.position - b.position || a.createdAt.localeCompare(b.createdAt);
 
-const byStarredAt = (a: Task, b: Task) =>
+/** Starred view custom order; tasks starred before it existed fall back to star time. */
+const byStarredPosition = (a: Task, b: Task) =>
+  (a.starredPosition ?? 0) - (b.starredPosition ?? 0) ||
   (b.starredAt ?? "").localeCompare(a.starredAt ?? "");
 
 /** Tasks without a date go last; ties keep the custom order. */
@@ -18,8 +20,8 @@ const byDueDate = (a: Task, b: Task) => {
 };
 
 /**
- * Sorts active tasks for display. In the starred view, "custom" means
- * most recently starred first (tasks there come from many lists).
+ * Sorts active tasks for display. The starred view has its own custom
+ * order, separate from the order inside each list.
  */
 export function sortTasks(
   tasks: Task[],
@@ -27,7 +29,7 @@ export function sortTasks(
   { starredView = false } = {},
 ): Task[] {
   const compare =
-    mode === "date" ? byDueDate : starredView ? byStarredAt : byPosition;
+    mode === "date" ? byDueDate : starredView ? byStarredPosition : byPosition;
   return [...tasks].sort(compare);
 }
 
@@ -67,6 +69,14 @@ export function groupByDueDate(
     else push(task.dueDate, formatDateHeading(task.dueDate, now), task);
   }
   return groups;
+}
+
+/** Newly starred tasks go to the top of the starred view. */
+export function topStarredPosition(tasks: Task[]): number {
+  const positions = tasks
+    .filter((t) => t.starred)
+    .map((t) => t.starredPosition ?? 0);
+  return positions.length > 0 ? Math.min(...positions) - 1 : 0;
 }
 
 /** New tasks go to the top of a list, like in Google Tasks. */

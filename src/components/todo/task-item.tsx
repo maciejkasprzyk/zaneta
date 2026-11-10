@@ -7,10 +7,12 @@ import {
   CheckIcon,
   ClockIcon,
   GripVerticalIcon,
+  RepeatIcon,
   StarIcon,
 } from "lucide-react";
 import { formatDueDate, isOverdue } from "@/lib/todo/dates";
 import { formatEffort } from "@/lib/todo/effort";
+import { formatRecurrence } from "@/lib/todo/recurrence";
 import type { Task } from "@/lib/todo/types";
 import { cn } from "@/lib/utils";
 
@@ -103,7 +105,10 @@ export function TaskItem({
             {task.description}
           </span>
         )}
-        {(task.dueDate || task.effortMinutes || listName) && (
+        {(task.dueDate ||
+          task.effortMinutes ||
+          task.recurrence ||
+          listName) && (
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
             {task.dueDate && (
               <span
@@ -122,6 +127,12 @@ export function TaskItem({
               <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
                 <ClockIcon className="size-3" />
                 {formatEffort(task.effortMinutes)}
+              </span>
+            ) : null}
+            {task.recurrence ? (
+              <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+                <RepeatIcon className="size-3" />
+                {formatRecurrence(task.recurrence)}
               </span>
             ) : null}
             {listName && (
