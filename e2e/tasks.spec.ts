@@ -180,3 +180,61 @@ test("completing a repeating task schedules the next one", async ({ page }) => {
     page.getByRole("button", { name: "Ukończone (1)" }),
   ).toBeVisible();
 });
+
+test("tasks can be dragged to another list on the board", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Nowa lista" }).click();
+  await page.getByLabel("Nazwa listy").fill("Zakupy");
+  await page.getByRole("button", { name: "Utwórz" }).click();
+  const mine = page.getByRole("region", { name: "Moje zadania" });
+  const shopping = page.getByRole("region", { name: "Zakupy" });
+  await addTask(page, "Mleko", { scope: mine });
+  await addTask(page, "Chleb", { scope: shopping });
+  await addTask(page, "Jajka", { scope: shopping });
+  expect(await taskTitles(shopping)).toEqual(["Jajka", "Chleb"]);
+
+  // Drag "Mleko" onto "Chleb": it lands just above it.
+  const handle = page.getByRole("button", {
+    name: "Przeciągnij zadanie Mleko",
+  });
+  const target = shopping.getByTestId("task-item").filter({ hasText: "Chleb" });
+  const from = await handle.boundingBox();
+  const to = await target.boundingBox();
+  if (!from || !to) throw new Error("missing boxes");
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 20, from.y + 10, { steps: 5 });
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 4, {
+    steps: 15,
+  });
+  await page.mouse.up();
+
+  await expect
+    .poll(() => taskTitles(shopping))
+    .toEqual(["Jajka", "Mleko", "Chleb"]);
+  expect(await taskTitles(mine)).toEqual([]);
+
+  // Dropping on the empty column puts the task at the end.
+  const back = await shopping
+    .getByRole("button", { name: "Przeciągnij zadanie Jajka" })
+    .boundingBox();
+  const empty = await mine.boundingBox();
+  if (!back || !empty) throw new Error("missing boxes");
+  await page.mouse.move(back.x + back.width / 2, back.y + back.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(back.x + 20, back.y + 10, { steps: 5 });
+  await page.mouse.move(
+    empty.x + empty.width / 2,
+    empty.y + empty.height - 20,
+    {
+      steps: 15,
+    },
+  );
+  await page.mouse.up();
+  await expect.poll(() => taskTitles(mine)).toEqual(["Jajka"]);
+
+  await page.reload();
+  expect(
+    await taskTitles(page.getByRole("region", { name: "Zakupy" })),
+  ).toEqual(["Mleko", "Chleb"]);
+});

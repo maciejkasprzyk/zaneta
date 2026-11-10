@@ -212,6 +212,15 @@ function useTodoStoreValue(repository: TodoRepository | null) {
       deleteTask: (id: string) => commit({ type: "taskDeleted", id }),
       reorderTasks: (listId: string, orderedIds: string[]) =>
         commit({ type: "tasksReordered", listId, orderedIds }),
+      /** Moves a task to another list, at the given order of that list. */
+      moveTask: (id: string, listId: string, orderedIds: string[]) => {
+        commit({
+          type: "taskUpdated",
+          id,
+          patch: { listId, updatedAt: nowIso() },
+        });
+        commit({ type: "tasksReordered", listId, orderedIds });
+      },
       reorderStarred: (orderedIds: string[]) =>
         commit({ type: "starredReordered", orderedIds }),
       setListHidden: (listId: string, hidden: boolean) => {

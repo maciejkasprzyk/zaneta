@@ -19,6 +19,7 @@ import {
   STARRED_TITLE,
 } from "@/lib/todo/views";
 import { cn } from "@/lib/utils";
+import { BoardDndProvider, ListColumn } from "./board-dnd";
 import { ConfirmDialog, ListNameDialog } from "./list-dialogs";
 import { TaskDialog } from "./task-dialog";
 import { TaskView } from "./task-view";
@@ -291,19 +292,21 @@ export function TodoApp() {
               Wszystkie listy są ukryte. Zaznacz listę w panelu po lewej.
             </p>
           )}
-          {visibleLists.map((list) => {
-            const listView = resolveView(state, list.id);
-            if (!listView) return null;
-            return (
-              <div
-                key={list.id}
-                data-list-column={list.id}
-                className="w-[22rem] shrink-0 rounded-xl border bg-card p-3 shadow-sm"
-              >
-                {renderView(listView, 2)}
-              </div>
-            );
-          })}
+          <BoardDndProvider>
+            {visibleLists.map((list) => {
+              const listView = resolveView(state, list.id);
+              if (!listView) return null;
+              return (
+                <ListColumn
+                  key={list.id}
+                  listId={list.id}
+                  className="w-[22rem] shrink-0 rounded-xl border bg-card p-3 shadow-sm"
+                >
+                  {renderView(listView, 2)}
+                </ListColumn>
+              );
+            })}
+          </BoardDndProvider>
         </main>
       ) : (
         <main

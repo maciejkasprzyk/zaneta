@@ -1,19 +1,10 @@
 "use client";
 
-import {
-  closestCenter,
-  DndContext,
-  type DragEndEvent,
-  KeyboardSensor,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
+import { closestCenter, DndContext, type DragEndEvent } from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
+  type SortingStrategy,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
@@ -45,6 +36,7 @@ import { useTodos } from "@/lib/todo/store";
 import type { SortMode } from "@/lib/todo/types";
 import type { ResolvedView } from "@/lib/todo/views";
 import { cn } from "@/lib/utils";
+import { dndAccessibility, useInBoardDnd, useTaskSensors } from "./board-dnd";
 import { SortableTaskItem, TaskItem, type TaskItemProps } from "./task-item";
 
 const pluralTasks = (n: number) => {
@@ -77,6 +69,8 @@ export function TaskView({
 }) {
   const store = useTodos();
   const titleId = useId();
+  // On the desktop board one drag context spans all columns.
+  const inBoard = useInBoardDnd() && view.kind === "list";
   const Heading = headingLevel === 1 ? "h1" : "h2";
   const GroupHeading = headingLevel === 1 ? "h2" : "h3";
   const [showCompleted, setShowCompleted] = useState(false);
@@ -88,6 +82,17 @@ export function TaskView({
     if (isStarred) store.updateSettings({ starredSortMode: mode });
     else store.setListSortMode(view.id, mode);
   };
+
+  const groupHeading = (label: string, overdue?: boolean) => (
+    <GroupHeading
+      className={cn(
+        "px-3 pt-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase",
+        overdue && "text-red-600 dark:text-red-400",
+      )}
+    >
+      {label}
+    </GroupHeading>
+  );
 
   const itemProps = (listId: string) =>
     ({
@@ -197,17 +202,44 @@ export function TaskView({
         </p>
       )}
 
-      {view.sortMode === "date" ? (
+      {inBoard ? (
+        <SortableContext
+          items={view.active.map((t) => t.id)}
+          strategy={
+            view.sortMode === "date"
+              ? noShiftStrategy
+              : verticalListSortingStrategy
+          }
+        >
+          <div className="flex min-h-12 flex-col">
+            {view.sortMode === "date"
+              ? groupByDueDate(view.active).map((group) => (
+                  <div key={group.key} className="flex flex-col">
+                    {groupHeading(group.label, group.overdue)}
+                    {group.tasks.map((task) => (
+                      <SortableTaskItem
+                        key={task.id}
+                        ghost
+                        task={task}
+                        {...itemProps(task.listId)}
+                      />
+                    ))}
+                  </div>
+                ))
+              : view.active.map((task) => (
+                  <SortableTaskItem
+                    key={task.id}
+                    ghost
+                    task={task}
+                    {...itemProps(task.listId)}
+                  />
+                ))}
+          </div>
+        </SortableContext>
+      ) : view.sortMode === "date" ? (
         groupByDueDate(view.active).map((group) => (
           <div key={group.key} className="flex flex-col">
-            <GroupHeading
-              className={cn(
-                "px-3 pt-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase",
-                group.overdue && "text-red-600 dark:text-red-400",
-              )}
-            >
-              {group.label}
-            </GroupHeading>
+            {groupHeading(group.label, group.overdue)}
             {group.tasks.map((task) => (
               <TaskItem key={task.id} task={task} {...itemProps(task.listId)} />
             ))}
@@ -262,15 +294,7 @@ function SortableTasks({
   onReorder: (ids: string[]) => void;
   children: React.ReactNode;
 }) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 150, tolerance: 5 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+  const sensors = useTaskSensors();
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
     const from = ids.indexOf(String(active.id));
@@ -283,12 +307,7 @@ function SortableTasks({
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragEnd={onDragEnd}
-      accessibility={{
-        screenReaderInstructions: {
-          draggable:
-            "Aby przenieść zadanie, naciśnij spację lub Enter, użyj strzałek, a następnie ponownie naciśnij spację lub Enter.",
-        },
-      }}
+      accessibility={dndAccessibility}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
         <div className="flex flex-col">{children}</div>
@@ -296,3 +315,6 @@ function SortableTasks({
     </DndContext>
   );
 }
+
+/** Date-sorted columns keep their order while something is dragged over. */
+const noShiftStrategy: SortingStrategy = () => null;

@@ -166,7 +166,13 @@ export function TaskItem({
   );
 }
 
-export function SortableTaskItem(props: Omit<TaskItemProps, "dragHandle">) {
+export function SortableTaskItem({
+  ghost = false,
+  ...props
+}: Omit<TaskItemProps, "dragHandle"> & {
+  /** Leave a faded placeholder while a drag overlay follows the pointer. */
+  ghost?: boolean;
+}) {
   const {
     attributes,
     listeners,
@@ -175,16 +181,19 @@ export function SortableTaskItem(props: Omit<TaskItemProps, "dragHandle">) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: props.task.id });
+  } = useSortable({
+    id: props.task.id,
+    data: { type: "task", listId: props.task.listId },
+  });
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn(isDragging && "relative z-10")}
+      className={cn(isDragging && (ghost ? "opacity-30" : "relative z-10"))}
     >
       <TaskItem
         {...props}
-        dragging={isDragging}
+        dragging={isDragging && !ghost}
         dragHandle={{ ref: setActivatorNodeRef, attributes, listeners }}
       />
     </div>
