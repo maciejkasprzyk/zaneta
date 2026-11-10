@@ -96,65 +96,68 @@ export function PrintView() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-3xl bg-white p-6 text-neutral-900 print:max-w-none print:p-0">
-      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border bg-neutral-50 p-3 print:hidden">
-        <Link href="/" className={buttonVariants({ variant: "ghost" })}>
-          <ArrowLeftIcon />
-          Wróć
-        </Link>
-        <label
-          htmlFor={checkboxId}
-          className="flex flex-1 items-center gap-2 text-sm"
-        >
-          <input
-            id={checkboxId}
-            type="checkbox"
-            checked={includeCompleted}
-            onChange={(e) => setIncludeCompleted(e.target.checked)}
-          />
-          Uwzględnij ukończone ({view.completed.length})
-        </label>
-        <Button onClick={() => window.print()}>
-          <PrinterIcon />
-          Drukuj
-        </Button>
+    // The printout is always light, even though the app uses a dark theme.
+    <div className="light flex-1 bg-white text-neutral-900">
+      <div className="mx-auto w-full max-w-3xl p-6 print:max-w-none print:p-0">
+        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border bg-neutral-50 p-3 print:hidden">
+          <Link href="/" className={buttonVariants({ variant: "ghost" })}>
+            <ArrowLeftIcon />
+            Wróć
+          </Link>
+          <label
+            htmlFor={checkboxId}
+            className="flex flex-1 items-center gap-2 text-sm"
+          >
+            <input
+              id={checkboxId}
+              type="checkbox"
+              checked={includeCompleted}
+              onChange={(e) => setIncludeCompleted(e.target.checked)}
+            />
+            Uwzględnij ukończone ({view.completed.length})
+          </label>
+          <Button onClick={() => window.print()}>
+            <PrinterIcon />
+            Drukuj
+          </Button>
+        </div>
+
+        <header className="mb-4 border-b-2 border-neutral-900 pb-2">
+          <h1 className="text-2xl font-semibold">{view.title}</h1>
+          <p className="text-sm text-neutral-600">
+            {printedAt} · zadania do zrobienia: {view.active.length}
+            {totalEffort > 0 && (
+              <> · łączny nakład: {formatEffort(totalEffort)}</>
+            )}
+          </p>
+        </header>
+
+        {view.active.length === 0 && (
+          <p className="py-4 text-sm text-neutral-600">
+            Brak zadań do zrobienia.
+          </p>
+        )}
+
+        {view.sortMode === "date"
+          ? groupByDueDate(view.active).map((group) => (
+              <section key={group.key} className="mb-3">
+                <h2 className="mt-3 text-sm font-semibold tracking-wide uppercase">
+                  {group.label}
+                </h2>
+                {renderTasks(group.tasks)}
+              </section>
+            ))
+          : renderTasks(view.active)}
+
+        {includeCompleted && view.completed.length > 0 && (
+          <section className="mt-6">
+            <h2 className="text-sm font-semibold tracking-wide uppercase">
+              Ukończone
+            </h2>
+            {renderTasks(view.completed)}
+          </section>
+        )}
       </div>
-
-      <header className="mb-4 border-b-2 border-neutral-900 pb-2">
-        <h1 className="text-2xl font-semibold">{view.title}</h1>
-        <p className="text-sm text-neutral-600">
-          {printedAt} · zadania do zrobienia: {view.active.length}
-          {totalEffort > 0 && (
-            <> · łączny nakład: {formatEffort(totalEffort)}</>
-          )}
-        </p>
-      </header>
-
-      {view.active.length === 0 && (
-        <p className="py-4 text-sm text-neutral-600">
-          Brak zadań do zrobienia.
-        </p>
-      )}
-
-      {view.sortMode === "date"
-        ? groupByDueDate(view.active).map((group) => (
-            <section key={group.key} className="mb-3">
-              <h2 className="mt-3 text-sm font-semibold tracking-wide uppercase">
-                {group.label}
-              </h2>
-              {renderTasks(group.tasks)}
-            </section>
-          ))
-        : renderTasks(view.active)}
-
-      {includeCompleted && view.completed.length > 0 && (
-        <section className="mt-6">
-          <h2 className="text-sm font-semibold tracking-wide uppercase">
-            Ukończone
-          </h2>
-          {renderTasks(view.completed)}
-        </section>
-      )}
     </div>
   );
 }

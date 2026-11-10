@@ -53,6 +53,7 @@ export function TaskItem({
           aria-label={`Przeciągnij zadanie ${task.title}`}
           className="mt-0.5 flex h-6 w-4 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground opacity-40 group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
           ref={dragHandle.ref}
+          data-no-swipe
           {...dragHandle.attributes}
           {...dragHandle.listeners}
         >

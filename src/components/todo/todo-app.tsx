@@ -1,7 +1,14 @@
 "use client";
 
-import { ListTodoIcon, PlusIcon, StarIcon } from "lucide-react";
-import { useState } from "react";
+import {
+  FlaskConicalIcon,
+  ListTodoIcon,
+  PlusIcon,
+  StarIcon,
+} from "lucide-react";
+import { type TouchEvent, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { createDemoState, devToolsEnabled } from "@/lib/todo/demo-data";
 import { useTodos } from "@/lib/todo/store";
 import { STARRED_VIEW } from "@/lib/todo/types";
 import { resolveView, STARRED_TITLE } from "@/lib/todo/views";
@@ -20,11 +27,26 @@ export function TodoApp() {
     null,
   );
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDemo, setConfirmDemo] = useState(false);
+  const [slideFrom, setSlideFrom] = useState<"left" | "right" | null>(null);
+  const touchStart = useRef<{ x: number; y: number; time: number } | null>(
+    null,
+  );
+  const navRef = useRef<HTMLElement>(null);
 
   const fallbackId = state.lists[0]?.id ?? null;
   const view =
     resolveView(state, state.settings.activeView) ??
     resolveView(state, fallbackId);
+
+  // Keep the active list visible in the horizontally scrolling mobile nav.
+  const activeId = view?.id;
+  useEffect(() => {
+    if (!activeId) return;
+    navRef.current
+      ?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [activeId]);
 
   if (!ready || !view) {
     return (
@@ -57,6 +79,40 @@ export function TodoApp() {
     })),
   ];
 
+  const viewIds = navItems.map((item) => item.id);
+
+  // Swipe left/right on touch screens switches to the next/previous view.
+  const onTouchStart = (event: TouchEvent) => {
+    const target = event.target as HTMLElement;
+    if (event.touches.length !== 1 || target.closest("[data-no-swipe]")) {
+      touchStart.current = null;
+      return;
+    }
+    const touch = event.touches[0];
+    touchStart.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now(),
+    };
+  };
+  const onTouchEnd = (event: TouchEvent) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start) return;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    const quick = Date.now() - start.time < 800;
+    if (!quick || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) {
+      return;
+    }
+    const index = viewIds.indexOf(view.id);
+    const next = viewIds[index + (dx < 0 ? 1 : -1)];
+    if (!next) return;
+    setSlideFrom(dx < 0 ? "right" : "left");
+    store.updateSettings({ activeView: next });
+  };
+
   return (
     <div className="flex flex-1 flex-col md:flex-row">
       <aside className="border-b bg-muted/30 md:w-64 md:shrink-0 md:border-r md:border-b-0">
@@ -64,9 +120,21 @@ export function TodoApp() {
           <span className="flex size-8 items-center justify-center rounded-lg bg-blue-600 text-white">
             <ListTodoIcon className="size-5" />
           </span>
-          <span className="text-lg font-semibold">Żaneta</span>
+          <span className="flex-1 text-lg font-semibold">Żaneta</span>
+          {devToolsEnabled && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmDemo(true)}
+              title="Tylko w wersji deweloperskiej"
+            >
+              <FlaskConicalIcon />
+              Dane testowe
+            </Button>
+          )}
         </div>
         <nav
+          ref={navRef}
           aria-label="Listy zadań"
           className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:overflow-visible"
         >
@@ -115,10 +183,21 @@ export function TodoApp() {
         </nav>
       </aside>
 
-      <main className="flex flex-1 justify-center px-3 py-4 md:px-8 md:py-8">
-        <div className="w-full max-w-2xl rounded-xl border bg-card p-3 shadow-sm md:p-4">
+      <main
+        className="flex flex-1 touch-pan-y justify-center overflow-x-hidden px-3 py-4 md:px-8 md:py-8"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        <div
+          key={view.id}
+          className={cn(
+            "h-fit w-full max-w-2xl rounded-xl border bg-card p-3 shadow-sm md:p-4",
+            slideFrom && "animate-in duration-200 fade-in-0",
+            slideFrom === "right" && "slide-in-from-right-12",
+            slideFrom === "left" && "slide-in-from-left-12",
+          )}
+        >
           <TaskView
-            key={view.id}
             view={view}
             onAddTask={() => setTaskDialog({ mode: "create" })}
             onOpenTask={(taskId) => setTaskDialog({ mode: "edit", taskId })}
@@ -171,6 +250,20 @@ export function TodoApp() {
           store.updateSettings({ activeView: null });
         }}
       />
+
+      {devToolsEnabled && (
+        <ConfirmDialog
+          open={confirmDemo}
+          onOpenChange={setConfirmDemo}
+          title="Wczytać dane testowe?"
+          description="Wszystkie obecne listy i zadania zostaną usunięte i zastąpione przykładowymi danymi."
+          confirmLabel="Wczytaj dane testowe"
+          onConfirm={() => {
+            setSlideFrom(null);
+            store.replaceState(createDemoState());
+          }}
+        />
+      )}
     </div>
   );
 }

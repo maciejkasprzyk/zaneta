@@ -21,7 +21,8 @@ export type TodoAction =
   | { type: "taskDeleted"; id: string }
   | { type: "tasksReordered"; listId: string; orderedIds: string[] }
   | { type: "completedCleared"; listId: string }
-  | { type: "settingsUpdated"; patch: Partial<Settings> };
+  | { type: "settingsUpdated"; patch: Partial<Settings> }
+  | { type: "stateReplaced"; state: TodoState };
 
 export function todoReducer(state: TodoState, action: TodoAction): TodoState {
   switch (action.type) {
@@ -75,5 +76,7 @@ export function todoReducer(state: TodoState, action: TodoAction): TodoState {
       };
     case "settingsUpdated":
       return { ...state, settings: { ...state.settings, ...action.patch } };
+    case "stateReplaced":
+      return action.state;
   }
 }

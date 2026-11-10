@@ -169,6 +169,8 @@ function useTodoStoreValue(repository: TodoRepository | null) {
         commit({ type: "completedCleared", listId }),
       updateSettings: (patch: Partial<Settings>) =>
         commit({ type: "settingsUpdated", patch }),
+      replaceState: (next: TodoState) =>
+        commit({ type: "stateReplaced", state: next }),
     }),
     [commit, createList],
   );
