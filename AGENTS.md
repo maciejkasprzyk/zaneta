@@ -15,3 +15,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - UI: Tailwind CSS v4 + **shadcn/ui** (Base UI primitives). Add components with `pnpm dlx shadcn@latest add <name>`; they land in `src/components/ui/` and may be edited. Use `cn()` from `@/lib/utils` to merge classes.
 - Tests: **Vitest** + Testing Library for unit tests (`*.test.tsx` next to the code, `pnpm test`); **Playwright** for end-to-end tests in `e2e/` (`pnpm test:e2e`).
 - Before finishing a change run: `pnpm lint && pnpm typecheck && pnpm test`.
+
+## Todo data layer
+
+- Domain code lives in `src/lib/todo/` (types, pure `todoReducer`, sorting, dates, effort helpers).
+- Every change is a `TodoAction`; the same reducer updates the UI state (`TodoProvider` / `useTodos` in `store.tsx`) and is persisted through the `TodoRepository` interface (`repository.ts`).
+- The only implementation today is `LocalStorageTodoRepository` (key `zaneta:todo:v1`). To move to a database, add another `TodoRepository` and pass it to `<TodoProvider repository={…}>`; components don't need to change.
