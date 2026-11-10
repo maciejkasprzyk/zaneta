@@ -1,4 +1,5 @@
 import { toISODate } from "./dates";
+import { LIST_DEFINITIONS } from "./list-registry";
 import type { Recurrence, Task, TaskList, TodoState } from "./types";
 
 /**
@@ -19,31 +20,45 @@ interface DemoTask {
   repeat?: Recurrence;
 }
 
-const DEMO: { name: string; sortMode?: "date"; tasks: DemoTask[] }[] = [
+/** Sample tasks per list (by list id); lists not mentioned stay empty. */
+const DEMO: { listId: string; sortMode?: "date"; tasks: DemoTask[] }[] = [
   {
-    name: "Moje zadania",
+    listId: "inbox",
+    tasks: [
+      { title: "Oddzwonić do hydraulika" },
+      {
+        title: "Pomysł: aplikacja do przepisów",
+        description: "Spisać funkcje",
+      },
+    ],
+  },
+  {
+    listId: "zadania",
     tasks: [
       {
-        title: "Zapłacić rachunki",
-        description: "Prąd, internet i czynsz",
-        due: -1,
-        effort: 20,
-        starred: true,
-        repeat: { interval: 1, unit: "month" },
+        title: "Umówić wizytę u dentysty",
+        due: 3,
+        effort: 10,
       },
-      {
-        title: "Zakupy spożywcze",
-        description: "Mleko, chleb, jajka, kawa",
-        due: 0,
-        effort: 45,
-      },
-      { title: "Umówić wizytę u dentysty", due: 3, effort: 10 },
       { title: "Przeczytać rozdział książki", effort: 90, starred: true },
+      {
+        title: "Naprawić cieknący kran",
+        description: "Kupić uszczelkę w markecie",
+        due: 6,
+        effort: 60,
+      },
       { title: "Oddać paczkę na poczcie", due: -3, completed: true },
     ],
   },
   {
-    name: "Praca",
+    listId: "backlog",
+    tasks: [
+      { title: "Posprzątać garaż", effort: 240 },
+      { title: "Zaktualizować dokumentację API", effort: 120 },
+    ],
+  },
+  {
+    listId: "gsk",
     sortMode: "date",
     tasks: [
       {
@@ -56,20 +71,32 @@ const DEMO: { name: string; sortMode?: "date"; tasks: DemoTask[] }[] = [
       },
       { title: "Code review PR kolegi", due: 0, effort: 30 },
       { title: "Napisać raport tygodniowy", due: 4, effort: 60 },
-      { title: "Zaktualizować dokumentację API", effort: 120 },
       { title: "Odpisać na maile", due: -2, effort: 15, completed: true },
     ],
   },
   {
-    name: "Dom",
+    listId: "kupic",
     tasks: [
       {
-        title: "Naprawić cieknący kran",
-        description: "Kupić uszczelkę w markecie",
-        due: 6,
-        effort: 60,
+        title: "Zakupy spożywcze",
+        description: "Mleko, chleb, jajka, kawa",
+        due: 0,
+        effort: 45,
       },
-      { title: "Posprzątać garaż", effort: 240 },
+      { title: "Żarówka E27", completed: true },
+    ],
+  },
+  {
+    listId: "powtarzalne",
+    tasks: [
+      {
+        title: "Zapłacić rachunki",
+        description: "Prąd, internet i czynsz",
+        due: -1,
+        effort: 20,
+        starred: true,
+        repeat: { interval: 1, unit: "month" },
+      },
       {
         title: "Podlać kwiaty",
         due: 1,
@@ -77,25 +104,26 @@ const DEMO: { name: string; sortMode?: "date"; tasks: DemoTask[] }[] = [
         starred: true,
         repeat: { interval: 3, unit: "day" },
       },
-      { title: "Wymienić żarówkę w przedpokoju", effort: 10, completed: true },
     ],
   },
-  { name: "Pusta lista", tasks: [] },
+  {
+    listId: "przypomnienia",
+    tasks: [{ title: "Urodziny mamy", due: 12, starred: true }],
+  },
 ];
 
 /** Builds a fresh state with a few lists and varied tasks for manual testing. */
 export function createDemoState(now: Date = new Date()): TodoState {
   const iso = now.toISOString();
-  const lists: TaskList[] = [];
+  const lists: TaskList[] = LIST_DEFINITIONS.map((d) => ({
+    id: d.id,
+    name: d.name,
+    sortMode: DEMO.find((x) => x.listId === d.id)?.sortMode ?? "custom",
+    createdAt: iso,
+  }));
   const tasks: Task[] = [];
   DEMO.forEach((demoList, li) => {
-    const listId = `demo-list-${li + 1}`;
-    lists.push({
-      id: listId,
-      name: demoList.name,
-      sortMode: demoList.sortMode ?? "custom",
-      createdAt: iso,
-    });
+    const listId = demoList.listId;
     demoList.tasks.forEach((t, ti) => {
       let dueDate: string | null = null;
       if (t.due !== undefined) {

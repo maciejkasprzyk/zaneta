@@ -8,10 +8,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
+  ArrowUpDownIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   EllipsisVerticalIcon,
-  PencilIcon,
   PlusIcon,
   PrinterIcon,
   Trash2Icon,
@@ -53,17 +53,14 @@ export function TaskView({
   view,
   onAddTask,
   onOpenTask,
-  onRenameList,
-  onDeleteList,
-  canDeleteList,
+  onReorderLists,
   headingLevel = 1,
 }: {
   view: ResolvedView;
   onAddTask: () => void;
   onOpenTask: (id: string) => void;
-  onRenameList: () => void;
-  onDeleteList: () => void;
-  canDeleteList: boolean;
+  /** Opens the list order dialog (shown in the menu when provided). */
+  onReorderLists?: () => void;
   /** 1 when the view fills the page, 2 for a column on the desktop board. */
   headingLevel?: 1 | 2;
 }) {
@@ -157,27 +154,21 @@ export function TaskView({
               <PrinterIcon />
               {isStarred ? "Drukuj zadania z gwiazdką" : "Drukuj listę"}
             </DropdownMenuItem>
+            {onReorderLists && (
+              <DropdownMenuItem onClick={onReorderLists}>
+                <ArrowUpDownIcon />
+                Zmień kolejność list
+              </DropdownMenuItem>
+            )}
             {!isStarred && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onRenameList}>
-                  <PencilIcon />
-                  Zmień nazwę listy
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={view.completed.length === 0}
                   onClick={() => store.clearCompleted(view.id)}
                 >
                   <Trash2Icon />
                   Usuń ukończone zadania
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={!canDeleteList}
-                  onClick={onDeleteList}
-                >
-                  <Trash2Icon />
-                  Usuń listę
                 </DropdownMenuItem>
               </>
             )}
