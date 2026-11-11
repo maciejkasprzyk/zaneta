@@ -29,42 +29,52 @@ async function swipe(page: Page, dx: number) {
   }, dx);
 }
 
-test("demo data button resets to sample lists after confirmation", async ({
+test("demo data button resets to sample data after confirmation", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Nowa lista" }).click();
-  await page.getByLabel("Nazwa listy").fill("Do usunięcia");
-  await page.getByRole("button", { name: "Utwórz" }).click();
+  await expect(viewTitle(page)).toHaveText("Inbox");
+  await page.getByRole("button", { name: "Dodaj zadanie" }).click();
+  await page.getByLabel("Tytuł").fill("Do usunięcia");
+  await page.getByRole("button", { name: "Dodaj", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeHidden();
 
   await page.getByRole("button", { name: "Dane testowe" }).click();
   await page.getByRole("button", { name: "Anuluj" }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
-  await expect(viewTitle(page)).toHaveText("Do usunięcia");
+  await expect(page.getByText("Do usunięcia")).toBeVisible();
 
   await page.getByRole("button", { name: "Dane testowe" }).click();
   await page.getByRole("button", { name: "Wczytaj dane testowe" }).click();
-  await expect(viewTitle(page)).toHaveText("Moje zadania");
-  await expect(page.getByRole("button", { name: /Do usunięcia/ })).toHaveCount(
-    0,
-  );
-  await expect(page.getByRole("button", { name: /^Praca/ })).toBeVisible();
+  await expect(viewTitle(page)).toHaveText("Inbox");
+  await expect(page.getByText("Do usunięcia")).toHaveCount(0);
   await expect(page.getByTestId("task-item").first()).toBeVisible();
 });
 
 test("swiping switches between lists", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Dane testowe" }).click();
-  await page.getByRole("button", { name: "Wczytaj dane testowe" }).click();
-  await expect(viewTitle(page)).toHaveText("Moje zadania");
+  await expect(viewTitle(page)).toHaveText("Inbox");
 
   await swipe(page, -150);
-  await expect(viewTitle(page)).toHaveText("Praca");
+  await expect(viewTitle(page)).toHaveText("Zadania");
   await swipe(page, 150);
-  await expect(viewTitle(page)).toHaveText("Moje zadania");
+  await expect(viewTitle(page)).toHaveText("Inbox");
   await swipe(page, 150);
   await expect(viewTitle(page)).toHaveText("Oznaczone gwiazdką");
   // A short movement is not a swipe.
   await swipe(page, -20);
   await expect(viewTitle(page)).toHaveText("Oznaczone gwiazdką");
+});
+
+test("list order can be changed on a phone", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Kolejność list" }).click();
+  await page.getByRole("button", { name: "Przenieś niżej: Inbox" }).click();
+  await page.getByRole("button", { name: "Gotowe" }).click();
+  await expect(page.getByRole("dialog")).toBeHidden();
+
+  // Swiping follows the new order: starred, Zadania, Inbox, ...
+  await page.getByRole("button", { name: /^Zadania/ }).click();
+  await swipe(page, -150);
+  await expect(viewTitle(page)).toHaveText("Inbox");
 });

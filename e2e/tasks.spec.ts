@@ -11,8 +11,10 @@ async function addTask(
     scope?: Locator;
   } = {},
 ) {
+  // Without a scope, add to the first list on screen (the Inbox).
   await (opts.scope ?? page)
     .getByRole("button", { name: "Dodaj zadanie" })
+    .first()
     .click();
   await page.getByLabel("Tytuł").fill(title);
   if (opts.date) await page.getByLabel("Termin").fill(opts.date);
@@ -25,6 +27,8 @@ async function addTask(
   await page.getByRole("button", { name: "Dodaj", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
 }
+
+const inbox = (page: Page) => page.getByRole("region", { name: "Inbox" });
 
 const taskTitles = (page: Page | Locator) =>
   page.getByTestId("task-item").locator("span.leading-6").allTextContents();
@@ -50,7 +54,7 @@ test("tasks persist, can be starred, sorted by date and printed", async ({
   expect(await taskTitles(page)).toEqual(["Wcześniej", "Później", "Bez daty"]);
 
   // Sort by date.
-  await page.getByRole("button", { name: "Opcje listy" }).click();
+  await inbox(page).getByRole("button", { name: "Opcje listy" }).click();
   await page.getByRole("menuitemradio", { name: "Data" }).click();
   expect(await taskTitles(page)).toEqual(["Wcześniej", "Później", "Bez daty"]);
   await expect(
@@ -81,23 +85,20 @@ test("completing a task moves it to the completed section", async ({
     .getByRole("button", { name: "Oznacz jako ukończone: Do zrobienia" })
     .click();
   await expect(
-    page.getByText("Brak zadań. Dodaj pierwsze zadanie."),
+    inbox(page).getByText("Brak zadań. Dodaj pierwsze zadanie."),
   ).toBeVisible();
   await page.getByRole("button", { name: "Ukończone (1)" }).click();
   await expect(page.getByText("Do zrobienia")).toBeVisible();
 });
 
-test("lists can be created and printed", async ({ page }) => {
+test("a list can be printed", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Nowa lista" }).click();
-  await page.getByLabel("Nazwa listy").fill("Zakupy");
-  await page.getByRole("button", { name: "Utwórz" }).click();
-  const column = page.getByRole("region", { name: "Zakupy" });
+  const column = page.getByRole("region", { name: "Kupić" });
   await expect(column).toBeVisible();
   await addTask(page, "Chleb", { scope: column });
   await column.getByRole("link", { name: "Drukuj listę" }).click();
   await expect(
-    page.getByRole("heading", { level: 1, name: "Zakupy" }),
+    page.getByRole("heading", { level: 1, name: "Kupić" }),
   ).toBeVisible();
   await expect(page.getByTestId("print-task")).toHaveText(/Chleb/);
 });
@@ -106,12 +107,8 @@ test("desktop shows all lists side by side and can hide one", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Nowa lista" }).click();
-  await page.getByLabel("Nazwa listy").fill("Zakupy");
-  await page.getByRole("button", { name: "Utwórz" }).click();
-
-  const mine = page.getByRole("region", { name: "Moje zadania" });
-  const shopping = page.getByRole("region", { name: "Zakupy" });
+  const mine = page.getByRole("region", { name: "Inbox" });
+  const shopping = page.getByRole("region", { name: "Zadania" });
   await expect(mine).toBeVisible();
   await expect(shopping).toBeVisible();
   const [a, b] = await Promise.all([
@@ -120,13 +117,11 @@ test("desktop shows all lists side by side and can hide one", async ({
   ]);
   expect(b?.x).toBeGreaterThan((a?.x ?? 0) + (a?.width ?? 0));
 
-  await page
-    .getByRole("checkbox", { name: "Pokaż listę Moje zadania" })
-    .uncheck();
+  await page.getByRole("checkbox", { name: "Pokaż listę Inbox" }).uncheck();
   await expect(mine).toBeHidden();
   await expect(shopping).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("region", { name: "Moje zadania" })).toBeHidden();
+  await expect(page.getByRole("region", { name: "Inbox" })).toBeHidden();
 });
 
 test("starred tasks can be reordered by dragging", async ({ page }) => {
@@ -183,11 +178,8 @@ test("completing a repeating task schedules the next one", async ({ page }) => {
 
 test("tasks can be dragged to another list on the board", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Nowa lista" }).click();
-  await page.getByLabel("Nazwa listy").fill("Zakupy");
-  await page.getByRole("button", { name: "Utwórz" }).click();
-  const mine = page.getByRole("region", { name: "Moje zadania" });
-  const shopping = page.getByRole("region", { name: "Zakupy" });
+  const mine = page.getByRole("region", { name: "Inbox" });
+  const shopping = page.getByRole("region", { name: "Zadania" });
   await addTask(page, "Mleko", { scope: mine });
   await addTask(page, "Chleb", { scope: shopping });
   await addTask(page, "Jajka", { scope: shopping });
@@ -235,6 +227,67 @@ test("tasks can be dragged to another list on the board", async ({ page }) => {
 
   await page.reload();
   expect(
-    await taskTitles(page.getByRole("region", { name: "Zakupy" })),
+    await taskTitles(page.getByRole("region", { name: "Zadania" })),
   ).toEqual(["Mleko", "Chleb"]);
+});
+
+test("lists can be reordered and the order is kept", async ({ page }) => {
+  await page.goto("/");
+  const sidebarLists = () =>
+    page
+      .getByRole("navigation", { name: "Listy zadań" })
+      .getByRole("checkbox")
+      .evaluateAll((els) =>
+        els.map((el) =>
+          el.getAttribute("aria-label")?.replace("Pokaż listę ", ""),
+        ),
+      );
+  // The app renders after loading from storage; wait before reading.
+  await expect(
+    page.getByRole("checkbox", { name: "Pokaż listę Inbox" }),
+  ).toBeVisible();
+  expect((await sidebarLists()).slice(0, 3)).toEqual([
+    "Inbox",
+    "Zadania",
+    "Backlog",
+  ]);
+
+  await page.getByRole("button", { name: "Zmień kolejność list" }).click();
+  await page.getByRole("button", { name: "Przenieś wyżej: Backlog" }).click();
+  await page.getByRole("button", { name: "Przenieś wyżej: Backlog" }).click();
+  await page.getByRole("button", { name: "Gotowe" }).click();
+  expect((await sidebarLists()).slice(0, 3)).toEqual([
+    "Backlog",
+    "Inbox",
+    "Zadania",
+  ]);
+
+  // Board columns follow the same order, also after a reload.
+  await page.reload();
+  await expect(page.locator("[data-list-column]").first()).toBeVisible();
+  const columns = await page
+    .locator("[data-list-column]")
+    .evaluateAll((els) => els.map((el) => el.getAttribute("data-list-column")));
+  expect(columns.slice(0, 3)).toEqual(["backlog", "inbox", "zadania"]);
+});
+
+test("desktop list section collapses and shows usage notes", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const toggle = page.getByRole("button", { name: "Listy", exact: true });
+  await expect(page.getByLabel("Pokaż listę Inbox")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Jak używać" })).toBeVisible();
+  await expect(page.getByText("W liście GSK trzymaj rezultaty")).toBeVisible();
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByLabel("Pokaż listę Inbox")).toHaveCount(0);
+
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Listy", exact: true }),
+  ).toHaveAttribute("aria-expanded", "false");
+  await page.getByRole("button", { name: "Listy", exact: true }).click();
+  await expect(page.getByLabel("Pokaż listę Inbox")).toBeVisible();
 });

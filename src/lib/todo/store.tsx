@@ -12,6 +12,7 @@ import {
 } from "react";
 import { toISODate } from "./dates";
 import { LocalStorageTodoRepository } from "./local-storage-repository";
+import { needsReconcile, reconcileLists } from "./reconcile";
 import { nextOccurrence } from "./recurrence";
 import { type TodoAction, todoReducer } from "./reducer";
 import type { TodoRepository } from "./repository";
@@ -22,11 +23,8 @@ import {
   type Settings,
   type SortMode,
   type Task,
-  type TaskList,
   type TodoState,
 } from "./types";
-
-export const DEFAULT_LIST_NAME = "Moje zadania";
 
 /** Editable fields of a task, as entered in the task form. */
 export interface TaskInput {
@@ -62,46 +60,32 @@ function useTodoStoreValue(repository: TodoRepository | null) {
     [repository],
   );
 
-  const createList = useCallback(
-    (name: string): string => {
-      const list: TaskList = {
-        id: newId(),
-        name: name.trim() || DEFAULT_LIST_NAME,
-        sortMode: "custom",
-        createdAt: nowIso(),
-      };
-      commit({ type: "listCreated", list });
-      return list.id;
-    },
-    [commit],
-  );
-
   useEffect(() => {
     if (!repository) return;
     let cancelled = false;
     repository.load().then((loaded) => {
       if (cancelled) return;
+      // Lists come from code; align stored data with them and save if needed.
+      const reconciled = reconcileLists(loaded);
       stateRef.current = loaded;
-      setState(loaded);
-      if (loaded.lists.length === 0) createList(DEFAULT_LIST_NAME);
+      if (needsReconcile(loaded, reconciled)) {
+        commit({ type: "stateReplaced", state: reconciled });
+      } else {
+        setState(loaded);
+      }
       setReady(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [repository, createList]);
+  }, [repository, commit]);
 
   const actions = useMemo(
     () => ({
-      createList,
-      renameList: (id: string, name: string) => {
-        const trimmed = name.trim();
-        if (trimmed)
-          commit({ type: "listUpdated", id, patch: { name: trimmed } });
-      },
       setListSortMode: (id: string, sortMode: SortMode) =>
         commit({ type: "listUpdated", id, patch: { sortMode } }),
-      deleteList: (id: string) => commit({ type: "listDeleted", id }),
+      reorderLists: (orderedIds: string[]) =>
+        commit({ type: "listsReordered", orderedIds }),
 
       createTask: (input: TaskInput): string => {
         const now = nowIso();
@@ -235,9 +219,9 @@ function useTodoStoreValue(repository: TodoRepository | null) {
       updateSettings: (patch: Partial<Settings>) =>
         commit({ type: "settingsUpdated", patch }),
       replaceState: (next: TodoState) =>
-        commit({ type: "stateReplaced", state: next }),
+        commit({ type: "stateReplaced", state: reconcileLists(next) }),
     }),
-    [commit, createList],
+    [commit],
   );
 
   return { state, ready, ...actions };

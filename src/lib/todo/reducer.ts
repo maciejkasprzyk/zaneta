@@ -16,6 +16,7 @@ export type TodoAction =
   | { type: "listCreated"; list: TaskList }
   | { type: "listUpdated"; id: string; patch: ListPatch }
   | { type: "listDeleted"; id: string }
+  | { type: "listsReordered"; orderedIds: string[] }
   | { type: "taskCreated"; task: Task }
   | { type: "taskUpdated"; id: string; patch: TaskPatch }
   | { type: "taskDeleted"; id: string }
@@ -42,6 +43,14 @@ export function todoReducer(state: TodoState, action: TodoAction): TodoState {
         lists: state.lists.filter((l) => l.id !== action.id),
         tasks: state.tasks.filter((t) => t.listId !== action.id),
       };
+    case "listsReordered": {
+      const index = new Map(action.orderedIds.map((id, i) => [id, i]));
+      const rank = (id: string) => index.get(id) ?? Number.MAX_SAFE_INTEGER;
+      return {
+        ...state,
+        lists: [...state.lists].sort((a, b) => rank(a.id) - rank(b.id)),
+      };
+    }
     case "taskCreated":
       return { ...state, tasks: [...state.tasks, action.task] };
     case "taskUpdated":

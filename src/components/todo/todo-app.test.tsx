@@ -39,9 +39,9 @@ describe("TodoApp", () => {
   beforeEach(() => localStorage.clear());
   afterEach(cleanup);
 
-  it("creates a default list on first visit", async () => {
+  it("opens the inbox on first visit", async () => {
     const { heading } = await renderApp();
-    expect(heading.textContent).toBe("Moje zadania");
+    expect(heading.textContent).toBe("Inbox");
   });
 
   it("adds a task with details and stars it", async () => {

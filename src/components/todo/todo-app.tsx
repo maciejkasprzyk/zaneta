@@ -1,10 +1,13 @@
 "use client";
 
 import {
+  ArrowUpDownIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   FlaskConicalIcon,
+  InfoIcon,
   LayoutGridIcon,
   ListTodoIcon,
-  PlusIcon,
   StarIcon,
 } from "lucide-react";
 import { type TouchEvent, useEffect, useRef, useState } from "react";
@@ -13,6 +16,7 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { createDemoState, devToolsEnabled } from "@/lib/todo/demo-data";
 import { useTodos } from "@/lib/todo/store";
 import { STARRED_VIEW } from "@/lib/todo/types";
+import { USAGE_NOTES } from "@/lib/todo/usage-notes";
 import {
   type ResolvedView,
   resolveView,
@@ -20,15 +24,19 @@ import {
 } from "@/lib/todo/views";
 import { cn } from "@/lib/utils";
 import { BoardDndProvider, ListColumn } from "./board-dnd";
-import { ConfirmDialog, ListNameDialog } from "./list-dialogs";
+import { ConfirmDialog } from "./confirm-dialog";
+import {
+  ListIcon,
+  ListOrderDialog,
+  SortableListRow,
+  SortableLists,
+} from "./list-order";
 import { TaskDialog } from "./task-dialog";
 import { TaskView } from "./task-view";
 
 type TaskDialogState =
   | { mode: "create"; listId: string; starred: boolean }
   | { mode: "edit"; taskId: string };
-
-type ListDialogState = { mode: "create" } | { mode: "rename"; listId: string };
 
 const navButtonClass = (active: boolean) =>
   cn(
@@ -44,8 +52,7 @@ export function TodoApp() {
   // one list at a time and switch with swipes.
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [taskDialog, setTaskDialog] = useState<TaskDialogState | null>(null);
-  const [listDialog, setListDialog] = useState<ListDialogState | null>(null);
-  const [deleteListId, setDeleteListId] = useState<string | null>(null);
+  const [listOrderOpen, setListOrderOpen] = useState(false);
   const [confirmDemo, setConfirmDemo] = useState(false);
   const [slideFrom, setSlideFrom] = useState<"left" | "right" | null>(null);
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(
@@ -59,6 +66,7 @@ export function TodoApp() {
     resolveView(state, state.settings.activeView) ??
     resolveView(state, fallbackId);
   const hiddenListIds = state.settings.hiddenListIds ?? [];
+  const listsCollapsed = state.settings.listsCollapsed ?? false;
   const showBoard = isDesktop && view?.kind === "list";
 
   // Keep the active list visible: in the scrolling mobile nav, and as a
@@ -99,11 +107,6 @@ export function TodoApp() {
   const starredCount = state.tasks.filter(
     (t) => t.starred && !t.completed,
   ).length;
-  const deleteList = state.lists.find((l) => l.id === deleteListId);
-  const renameList =
-    listDialog?.mode === "rename"
-      ? state.lists.find((l) => l.id === listDialog.listId)
-      : undefined;
 
   const renderView = (v: ResolvedView, headingLevel: 1 | 2) => (
     <TaskView
@@ -117,11 +120,7 @@ export function TodoApp() {
         })
       }
       onOpenTask={(taskId) => setTaskDialog({ mode: "edit", taskId })}
-      onRenameList={() =>
-        v.list && setListDialog({ mode: "rename", listId: v.list.id })
-      }
-      onDeleteList={() => v.list && setDeleteListId(v.list.id)}
-      canDeleteList={state.lists.length > 1}
+      onReorderLists={() => setListOrderOpen(true)}
     />
   );
 
@@ -166,7 +165,7 @@ export function TodoApp() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-      <aside className="border-b bg-muted/30 md:w-64 md:shrink-0 md:border-r md:border-b-0">
+      <aside className="border-b bg-muted/30 md:sticky md:top-0 md:h-dvh md:w-64 md:shrink-0 md:overflow-y-auto md:border-r md:border-b-0">
         <div className="flex items-center gap-2 px-4 py-3 md:py-5">
           <span className="flex size-8 items-center justify-center rounded-lg bg-blue-600 text-white">
             <ListTodoIcon className="size-5" />
@@ -209,7 +208,13 @@ export function TodoApp() {
             className={navButtonClass(view.kind === "starred")}
           >
             <StarIcon className="size-4 shrink-0 text-amber-500" />
-            <span className="min-w-0 flex-1 truncate text-left">
+            {/* Phones show just the star icon to save room in the list bar. */}
+            <span
+              className={cn(
+                "min-w-0 flex-1 truncate text-left",
+                !isDesktop && "sr-only",
+              )}
+            >
               {STARRED_TITLE}
             </span>
             {starredCount > 0 && (
@@ -219,39 +224,83 @@ export function TodoApp() {
             )}
           </button>
           {isDesktop && (
-            <div className="px-3 pt-4 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              Listy
+            <div className="flex items-center justify-between pt-4 pb-1 pl-1">
+              <button
+                type="button"
+                aria-expanded={!listsCollapsed}
+                onClick={() =>
+                  store.updateSettings({ listsCollapsed: !listsCollapsed })
+                }
+                className="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase hover:bg-muted hover:text-foreground"
+              >
+                {listsCollapsed ? (
+                  <ChevronRightIcon className="size-3.5" />
+                ) : (
+                  <ChevronDownIcon className="size-3.5" />
+                )}
+                Listy
+              </button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Zmień kolejność list"
+                title="Zmień kolejność list"
+                onClick={() => setListOrderOpen(true)}
+              >
+                <ArrowUpDownIcon />
+              </Button>
             </div>
           )}
-          {state.lists.map((list) =>
-            isDesktop ? (
-              <div
-                key={list.id}
-                className="flex items-center gap-2 rounded-md pl-3 hover:bg-muted"
-              >
-                <input
-                  type="checkbox"
-                  className="size-4 shrink-0 accent-blue-600"
-                  checked={!hiddenListIds.includes(list.id)}
-                  onChange={(e) =>
-                    store.setListHidden(list.id, !e.target.checked)
-                  }
-                  aria-label={`Pokaż listę ${list.name}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => showList(list.id)}
-                  className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-3 text-left text-sm"
-                >
-                  <span className="min-w-0 flex-1 truncate">{list.name}</span>
-                  {openCount(list.id) > 0 && (
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {openCount(list.id)}
-                    </span>
-                  )}
-                </button>
-              </div>
-            ) : (
+          {isDesktop ? (
+            listsCollapsed ? null : (
+              <SortableLists lists={state.lists} onReorder={store.reorderLists}>
+                {state.lists.map((list) => (
+                  <SortableListRow
+                    key={list.id}
+                    id={list.id}
+                    name={list.name}
+                    className="group/row flex items-center gap-1.5 rounded-md hover:bg-muted"
+                  >
+                    {(handle) => (
+                      <>
+                        <span className="opacity-0 group-hover/row:opacity-100 focus-within:opacity-100">
+                          {handle}
+                        </span>
+                        <input
+                          type="checkbox"
+                          className="size-4 shrink-0 accent-blue-600"
+                          checked={!hiddenListIds.includes(list.id)}
+                          onChange={(e) =>
+                            store.setListHidden(list.id, !e.target.checked)
+                          }
+                          aria-label={`Pokaż listę ${list.name}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => showList(list.id)}
+                          className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-3 text-left text-sm"
+                        >
+                          <ListIcon
+                            listId={list.id}
+                            className="text-muted-foreground"
+                          />
+                          <span className="min-w-0 flex-1 truncate">
+                            {list.name}
+                          </span>
+                          {openCount(list.id) > 0 && (
+                            <span className="text-xs text-muted-foreground tabular-nums">
+                              {openCount(list.id)}
+                            </span>
+                          )}
+                        </button>
+                      </>
+                    )}
+                  </SortableListRow>
+                ))}
+              </SortableLists>
+            )
+          ) : (
+            state.lists.map((list) => (
               <button
                 key={list.id}
                 type="button"
@@ -259,7 +308,7 @@ export function TodoApp() {
                 aria-current={view.id === list.id ? "page" : undefined}
                 className={navButtonClass(view.id === list.id)}
               >
-                <ListTodoIcon className="size-4 shrink-0" />
+                <ListIcon listId={list.id} />
                 <span className="min-w-0 flex-1 truncate text-left">
                   {list.name}
                 </span>
@@ -269,17 +318,43 @@ export function TodoApp() {
                   </span>
                 )}
               </button>
-            ),
+            ))
           )}
-          <button
-            type="button"
-            onClick={() => setListDialog({ mode: "create" })}
-            className="flex shrink-0 items-center gap-3 rounded-full px-3 py-1.5 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:bg-muted md:rounded-l-md"
-          >
-            <PlusIcon className="size-4" />
-            Nowa lista
-          </button>
+          {!isDesktop && (
+            <button
+              type="button"
+              onClick={() => setListOrderOpen(true)}
+              className="flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:bg-muted"
+            >
+              <ArrowUpDownIcon className="size-4" />
+              Kolejność list
+            </button>
+          )}
         </nav>
+        {isDesktop && USAGE_NOTES.length > 0 && (
+          <section
+            aria-labelledby="usage-notes-title"
+            className="px-4 pt-4 pb-6"
+          >
+            <h2
+              id="usage-notes-title"
+              className="mb-2 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase"
+            >
+              <InfoIcon className="size-3.5" />
+              Jak używać
+            </h2>
+            <ul className="space-y-2">
+              {USAGE_NOTES.map((note) => (
+                <li
+                  key={note}
+                  className="rounded-md border bg-background/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground"
+                >
+                  {note}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </aside>
 
       {showBoard ? (
@@ -346,30 +421,11 @@ export function TodoApp() {
         }
       />
 
-      <ListNameDialog
-        open={listDialog !== null}
-        onOpenChange={(open) => !open && setListDialog(null)}
-        title={renameList ? "Zmień nazwę listy" : "Nowa lista"}
-        submitLabel={renameList ? "Zapisz" : "Utwórz"}
-        initialName={renameList?.name ?? ""}
-        onSubmit={(name) => {
-          if (renameList) store.renameList(renameList.id, name);
-          else selectView(store.createList(name));
-        }}
-      />
-
-      <ConfirmDialog
-        open={deleteListId !== null}
-        onOpenChange={(open) => !open && setDeleteListId(null)}
-        title={`Usunąć listę „${deleteList?.name ?? ""}”?`}
-        description="Wszystkie zadania z tej listy zostaną trwale usunięte."
-        confirmLabel="Usuń listę"
-        onConfirm={() => {
-          if (deleteListId) store.deleteList(deleteListId);
-          if (deleteListId === view.id) {
-            store.updateSettings({ activeView: null });
-          }
-        }}
+      <ListOrderDialog
+        open={listOrderOpen}
+        onOpenChange={setListOrderOpen}
+        lists={state.lists}
+        onReorder={store.reorderLists}
       />
 
       {devToolsEnabled && (
