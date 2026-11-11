@@ -1,6 +1,6 @@
 "use client";
 
-import { StarIcon, Trash2Icon, XIcon } from "lucide-react";
+import { BellIcon, StarIcon, Trash2Icon, XIcon } from "lucide-react";
 import { type FormEvent, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +59,7 @@ function TaskForm({
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
   const [dueDate, setDueDate] = useState(task?.dueDate ?? "");
+  const [reminderTime, setReminderTime] = useState(task?.reminderTime ?? "");
   const [effortValue, setEffortValue] = useState(initialEffort.value);
   const [effortUnit, setEffortUnit] = useState<EffortUnit>(initialEffort.unit);
   const [listId, setListId] = useState(task?.listId ?? defaultListId);
@@ -84,6 +85,7 @@ function TaskForm({
         ? toMinutes(Number(effortValue.replace(",", ".")), effortUnit)
         : null,
       recurrence,
+      reminderTime: reminderTime || null,
       listId,
       starred,
     });
@@ -166,6 +168,37 @@ function TaskForm({
               <option value="h">godz.</option>
             </select>
           </div>
+        </div>
+      </div>
+
+      <div className="grid gap-1.5">
+        <Label htmlFor={`${id}-reminder`}>Przypomnienie</Label>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            id={`${id}-reminder`}
+            type="time"
+            step={300}
+            className="w-32"
+            value={reminderTime}
+            onChange={(e) => setReminderTime(e.target.value)}
+          />
+          {reminderTime ? (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Usuń przypomnienie"
+                onClick={() => setReminderTime("")}
+              >
+                <XIcon />
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                <BellIcon className="mr-1 inline size-3" />
+                Powiadomienie w dniu terminu{dueDate ? "" : " (dzisiaj)"}.
+              </span>
+            </>
+          ) : null}
         </div>
       </div>
 

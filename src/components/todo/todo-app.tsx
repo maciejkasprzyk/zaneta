@@ -8,11 +8,13 @@ import {
   InfoIcon,
   LayoutGridIcon,
   ListTodoIcon,
+  LogOutIcon,
   StarIcon,
 } from "lucide-react";
 import { type TouchEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { authClient } from "@/lib/auth-client";
 import { createDemoState, devToolsEnabled } from "@/lib/todo/demo-data";
 import { useTodos } from "@/lib/todo/store";
 import { STARRED_VIEW } from "@/lib/todo/types";
@@ -31,6 +33,7 @@ import {
   SortableListRow,
   SortableLists,
 } from "./list-order";
+import { NotificationsMenu } from "./notifications-menu";
 import { TaskDialog } from "./task-dialog";
 import { TaskView } from "./task-view";
 
@@ -81,6 +84,17 @@ export function TodoApp() {
       ?.querySelector(`[data-list-column="${CSS.escape(activeId)}"]`)
       ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [activeId]);
+
+  if (store.loadError) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+        Nie udało się wczytać zadań.
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Spróbuj ponownie
+        </Button>
+      </div>
+    );
+  }
 
   if (!ready || !view) {
     return (
@@ -174,12 +188,27 @@ export function TodoApp() {
           {devToolsEnabled && (
             <Button
               variant="outline"
-              size="sm"
+              size="icon-sm"
               onClick={() => setConfirmDemo(true)}
-              title="Tylko w wersji deweloperskiej"
+              aria-label="Dane testowe"
+              title="Dane testowe (tylko w wersji deweloperskiej)"
             >
               <FlaskConicalIcon />
-              Dane testowe
+            </Button>
+          )}
+          {store.storage === "database" && <NotificationsMenu />}
+          {store.storage === "database" && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Wyloguj"
+              title="Wyloguj"
+              onClick={async () => {
+                await authClient.signOut();
+                window.location.assign("/login");
+              }}
+            >
+              <LogOutIcon />
             </Button>
           )}
         </div>

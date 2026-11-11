@@ -11,6 +11,8 @@ pnpm dev
 
 Other scripts: `pnpm lint` / `pnpm format` (Biome), `pnpm typecheck`, `pnpm test` (Vitest), `pnpm test:e2e` (Playwright).
 
+By default tasks are stored in the browser and there is no login. To use Postgres and Google login, copy `.env.example` to `.env.local`, fill it in and run `pnpm db:migrate`.
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
