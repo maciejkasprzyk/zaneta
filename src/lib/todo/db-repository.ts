@@ -37,6 +37,8 @@ function taskFromRow(row: typeof todoTask.$inferSelect): Task {
       row.recurrenceInterval && row.recurrenceUnit
         ? { interval: row.recurrenceInterval, unit: row.recurrenceUnit }
         : null,
+    reminderTime: row.reminderTime,
+    reminderAt: iso(row.reminderAt),
     starred: row.starred,
     starredAt: iso(row.starredAt),
     starredPosition: row.starredPosition,
@@ -59,6 +61,8 @@ function taskToRow(userId: string, task: Task): TaskRow {
     effortMinutes: task.effortMinutes ?? null,
     recurrenceInterval: task.recurrence?.interval ?? null,
     recurrenceUnit: task.recurrence?.unit ?? null,
+    reminderTime: task.reminderTime ?? null,
+    reminderAt: toDate(task.reminderAt),
     starred: task.starred,
     starredAt: toDate(task.starredAt),
     starredPosition: task.starredPosition ?? null,

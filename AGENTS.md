@@ -30,3 +30,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - After changing the schema run `pnpm db:generate` and commit the SQL in `drizzle/`. `pnpm build` applies pending migrations first (`scripts/migrate.mjs`, skipped without `DATABASE_URL`).
 - Login: **Better Auth** with Google only (`src/lib/auth.ts`). Only e-mails in `ALLOWED_EMAILS` can sign in; it is checked on sign-in and on every request (`getCurrentUser`). Pages that show tasks call `requireTodoAccess()` inside `<Suspense>`.
 - Env vars: see `.env.example`. Local database: put `DATABASE_URL` etc. in `.env.local`.
+
+## Reminders and push notifications
+
+- A task can have `reminderTime` (`HH:MM`, on its due date); the store also keeps `reminderAt` (the instant in the user's time zone), recomputed when the date/time changes and moved to the next occurrence of repeating tasks.
+- The app is a PWA (`src/app/manifest.ts`, `public/sw.js`, icons in `public/icons/`). The bell menu in the sidebar subscribes the device (`src/lib/push/client.ts` → `/api/push/subscription`) and can send a test push.
+- An external cron (cron-job.org, every 5 min) calls `GET /api/cron/reminders` with `Authorization: Bearer $CRON_SECRET`. `sendDueReminders` (`src/lib/push/reminders.ts`) sends reminders due in the last 12 h that aren't in `reminder_sent` yet; a failed delivery is retried on the next run. Vercel Cron on the Hobby plan only runs once a day, hence the external cron.

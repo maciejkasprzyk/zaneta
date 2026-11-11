@@ -3,6 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  BellIcon,
   CalendarIcon,
   CheckIcon,
   ClockIcon,
@@ -108,6 +109,7 @@ export function TaskItem({
         {(task.dueDate ||
           task.effortMinutes ||
           task.recurrence ||
+          task.reminderTime ||
           listName) && (
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
             {task.dueDate && (
@@ -127,6 +129,12 @@ export function TaskItem({
               <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
                 <ClockIcon className="size-3" />
                 {formatEffort(task.effortMinutes)}
+              </span>
+            ) : null}
+            {task.reminderTime ? (
+              <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground tabular-nums">
+                <BellIcon className="size-3" />
+                {task.reminderTime}
               </span>
             ) : null}
             {task.recurrence ? (

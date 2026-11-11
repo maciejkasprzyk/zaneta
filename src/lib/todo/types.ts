@@ -25,6 +25,10 @@ export interface Task {
   dueDate: string | null;
   /** Estimated effort in minutes. */
   effortMinutes: number | null;
+  /** Reminder time on the due date, local `HH:MM`. */
+  reminderTime?: string | null;
+  /** The reminder as an instant (from due date + time in the user's time zone). */
+  reminderAt?: string | null;
   /** Repeat rule; completing the task creates the next occurrence. */
   recurrence?: Recurrence | null;
   starred: boolean;

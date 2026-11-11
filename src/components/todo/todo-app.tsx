@@ -33,6 +33,7 @@ import {
   SortableListRow,
   SortableLists,
 } from "./list-order";
+import { NotificationsMenu } from "./notifications-menu";
 import { TaskDialog } from "./task-dialog";
 import { TaskView } from "./task-view";
 
@@ -195,6 +196,7 @@ export function TodoApp() {
               <FlaskConicalIcon />
             </Button>
           )}
+          {store.storage === "database" && <NotificationsMenu />}
           {store.storage === "database" && (
             <Button
               variant="ghost"

@@ -11,6 +11,18 @@ export function parseISODate(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
+/** `YYYY-MM-DD` + local `HH:MM` → ISO instant, or null when either is missing. */
+export function reminderInstant(
+  dueDate: string | null | undefined,
+  time: string | null | undefined,
+): string | null {
+  if (!dueDate || !time) return null;
+  const [h, m] = time.split(":").map(Number);
+  const date = parseISODate(dueDate);
+  date.setHours(h || 0, m || 0, 0, 0);
+  return date.toISOString();
+}
+
 /** Whole days from `now`'s date to `iso` (negative = in the past). */
 export function daysFromToday(iso: string, now: Date = new Date()): number {
   const today = parseISODate(toISODate(now));

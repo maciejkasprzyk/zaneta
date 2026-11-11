@@ -12,7 +12,7 @@ import {
 } from "react";
 import type { StorageMode } from "@/lib/storage-mode";
 import { ApiTodoRepository } from "./api-repository";
-import { toISODate } from "./dates";
+import { reminderInstant, toISODate } from "./dates";
 import { LocalStorageTodoRepository } from "./local-storage-repository";
 import { needsReconcile, reconcileLists } from "./reconcile";
 import { nextOccurrence } from "./recurrence";
@@ -36,6 +36,8 @@ export interface TaskInput {
   dueDate: string | null;
   effortMinutes: number | null;
   recurrence: Recurrence | null;
+  /** Local `HH:MM` on the due date; needs a due date (today if none). */
+  reminderTime: string | null;
   starred: boolean;
 }
 
@@ -101,14 +103,16 @@ function useTodoStoreValue(
 
       createTask: (input: TaskInput): string => {
         const now = nowIso();
+        // A repeating task or a reminder always has a date to count from.
+        const dueDate =
+          (input.recurrence || input.reminderTime) && !input.dueDate
+            ? toISODate(new Date())
+            : input.dueDate;
         const task: Task = {
           id: newId(),
           ...input,
-          // A repeating task always has a date to count from.
-          dueDate:
-            input.recurrence && !input.dueDate
-              ? toISODate(new Date())
-              : input.dueDate,
+          dueDate,
+          reminderAt: reminderInstant(dueDate, input.reminderTime),
           title: input.title.trim(),
           starredAt: input.starred ? now : null,
           starredPosition: input.starred
@@ -129,10 +133,21 @@ function useTodoStoreValue(
         const now = nowIso();
         const patch: Partial<Task> = { ...input, updatedAt: now };
         if (input.title !== undefined) patch.title = input.title.trim();
-        const recurrence = input.recurrence ?? task.recurrence;
-        if (recurrence && !(input.dueDate ?? task.dueDate)) {
+        const recurrence =
+          input.recurrence !== undefined ? input.recurrence : task.recurrence;
+        const reminderTime =
+          input.reminderTime !== undefined
+            ? input.reminderTime
+            : task.reminderTime;
+        const dueDate =
+          input.dueDate !== undefined ? input.dueDate : task.dueDate;
+        if ((recurrence || reminderTime) && !dueDate) {
           patch.dueDate = toISODate(new Date());
         }
+        patch.reminderAt = reminderInstant(
+          patch.dueDate ?? dueDate,
+          reminderTime,
+        );
         if (input.starred !== undefined && input.starred !== task.starred) {
           patch.starredAt = input.starred ? now : null;
           patch.starredPosition = input.starred
@@ -156,6 +171,10 @@ function useTodoStoreValue(
             ...task,
             id: newId(),
             dueDate: nextOccurrence(task.dueDate, task.recurrence),
+            reminderAt: reminderInstant(
+              nextOccurrence(task.dueDate, task.recurrence),
+              task.reminderTime,
+            ),
             position: topPosition(stateRef.current.tasks, task.listId),
             starredPosition: task.starred ? task.starredPosition : null,
             createdAt: now,
