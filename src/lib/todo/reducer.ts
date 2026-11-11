@@ -26,6 +26,30 @@ export type TodoAction =
   | { type: "settingsUpdated"; patch: Partial<Settings> }
   | { type: "stateReplaced"; state: TodoState };
 
+const ACTION_TYPES = new Set<TodoAction["type"]>([
+  "listCreated",
+  "listUpdated",
+  "listDeleted",
+  "listsReordered",
+  "taskCreated",
+  "taskUpdated",
+  "taskDeleted",
+  "tasksReordered",
+  "starredReordered",
+  "completedCleared",
+  "settingsUpdated",
+  "stateReplaced",
+]);
+
+/** Shallow check for actions arriving over the network. */
+export function isTodoAction(value: unknown): value is TodoAction {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    ACTION_TYPES.has((value as { type: TodoAction["type"] }).type)
+  );
+}
+
 export function todoReducer(state: TodoState, action: TodoAction): TodoState {
   switch (action.type) {
     case "listCreated":
