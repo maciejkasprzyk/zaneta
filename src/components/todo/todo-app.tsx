@@ -203,7 +203,13 @@ export function TodoApp() {
             className={navButtonClass(view.kind === "starred")}
           >
             <StarIcon className="size-4 shrink-0 text-amber-500" />
-            <span className="min-w-0 flex-1 truncate text-left">
+            {/* Phones show just the star icon to save room in the list bar. */}
+            <span
+              className={cn(
+                "min-w-0 flex-1 truncate text-left",
+                !isDesktop && "sr-only",
+              )}
+            >
               {STARRED_TITLE}
             </span>
             {starredCount > 0 && (

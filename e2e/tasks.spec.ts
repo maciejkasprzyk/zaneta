@@ -242,6 +242,10 @@ test("lists can be reordered and the order is kept", async ({ page }) => {
           el.getAttribute("aria-label")?.replace("Pokaż listę ", ""),
         ),
       );
+  // The app renders after loading from storage; wait before reading.
+  await expect(
+    page.getByRole("checkbox", { name: "Pokaż listę Inbox" }),
+  ).toBeVisible();
   expect((await sidebarLists()).slice(0, 3)).toEqual([
     "Inbox",
     "Zadania",
@@ -260,6 +264,7 @@ test("lists can be reordered and the order is kept", async ({ page }) => {
 
   // Board columns follow the same order, also after a reload.
   await page.reload();
+  await expect(page.locator("[data-list-column]").first()).toBeVisible();
   const columns = await page
     .locator("[data-list-column]")
     .evaluateAll((els) => els.map((el) => el.getAttribute("data-list-column")));
