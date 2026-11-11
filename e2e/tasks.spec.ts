@@ -270,3 +270,24 @@ test("lists can be reordered and the order is kept", async ({ page }) => {
     .evaluateAll((els) => els.map((el) => el.getAttribute("data-list-column")));
   expect(columns.slice(0, 3)).toEqual(["backlog", "inbox", "zadania"]);
 });
+
+test("desktop list section collapses and shows usage notes", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const toggle = page.getByRole("button", { name: "Listy", exact: true });
+  await expect(page.getByLabel("Pokaż listę Inbox")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Jak używać" })).toBeVisible();
+  await expect(page.getByText("W liście GSK trzymaj rezultaty")).toBeVisible();
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByLabel("Pokaż listę Inbox")).toHaveCount(0);
+
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Listy", exact: true }),
+  ).toHaveAttribute("aria-expanded", "false");
+  await page.getByRole("button", { name: "Listy", exact: true }).click();
+  await expect(page.getByLabel("Pokaż listę Inbox")).toBeVisible();
+});

@@ -49,6 +49,8 @@ export interface Settings {
   starredSortMode: SortMode;
   /** Lists hidden from the desktop board (all-lists view). */
   hiddenListIds: string[];
+  /** Desktop sidebar: whether the list of lists is collapsed. */
+  listsCollapsed?: boolean;
 }
 
 export interface TodoState {

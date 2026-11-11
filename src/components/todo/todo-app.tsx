@@ -2,7 +2,10 @@
 
 import {
   ArrowUpDownIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   FlaskConicalIcon,
+  InfoIcon,
   LayoutGridIcon,
   ListTodoIcon,
   StarIcon,
@@ -13,6 +16,7 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { createDemoState, devToolsEnabled } from "@/lib/todo/demo-data";
 import { useTodos } from "@/lib/todo/store";
 import { STARRED_VIEW } from "@/lib/todo/types";
+import { USAGE_NOTES } from "@/lib/todo/usage-notes";
 import {
   type ResolvedView,
   resolveView,
@@ -62,6 +66,7 @@ export function TodoApp() {
     resolveView(state, state.settings.activeView) ??
     resolveView(state, fallbackId);
   const hiddenListIds = state.settings.hiddenListIds ?? [];
+  const listsCollapsed = state.settings.listsCollapsed ?? false;
   const showBoard = isDesktop && view?.kind === "list";
 
   // Keep the active list visible: in the scrolling mobile nav, and as a
@@ -160,7 +165,7 @@ export function TodoApp() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-      <aside className="border-b bg-muted/30 md:w-64 md:shrink-0 md:border-r md:border-b-0">
+      <aside className="border-b bg-muted/30 md:sticky md:top-0 md:h-dvh md:w-64 md:shrink-0 md:overflow-y-auto md:border-r md:border-b-0">
         <div className="flex items-center gap-2 px-4 py-3 md:py-5">
           <span className="flex size-8 items-center justify-center rounded-lg bg-blue-600 text-white">
             <ListTodoIcon className="size-5" />
@@ -219,10 +224,22 @@ export function TodoApp() {
             )}
           </button>
           {isDesktop && (
-            <div className="flex items-center justify-between pt-4 pb-1 pl-3">
-              <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            <div className="flex items-center justify-between pt-4 pb-1 pl-1">
+              <button
+                type="button"
+                aria-expanded={!listsCollapsed}
+                onClick={() =>
+                  store.updateSettings({ listsCollapsed: !listsCollapsed })
+                }
+                className="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase hover:bg-muted hover:text-foreground"
+              >
+                {listsCollapsed ? (
+                  <ChevronRightIcon className="size-3.5" />
+                ) : (
+                  <ChevronDownIcon className="size-3.5" />
+                )}
                 Listy
-              </span>
+              </button>
               <Button
                 variant="ghost"
                 size="icon-xs"
@@ -235,51 +252,53 @@ export function TodoApp() {
             </div>
           )}
           {isDesktop ? (
-            <SortableLists lists={state.lists} onReorder={store.reorderLists}>
-              {state.lists.map((list) => (
-                <SortableListRow
-                  key={list.id}
-                  id={list.id}
-                  name={list.name}
-                  className="group/row flex items-center gap-1.5 rounded-md hover:bg-muted"
-                >
-                  {(handle) => (
-                    <>
-                      <span className="opacity-0 group-hover/row:opacity-100 focus-within:opacity-100">
-                        {handle}
-                      </span>
-                      <input
-                        type="checkbox"
-                        className="size-4 shrink-0 accent-blue-600"
-                        checked={!hiddenListIds.includes(list.id)}
-                        onChange={(e) =>
-                          store.setListHidden(list.id, !e.target.checked)
-                        }
-                        aria-label={`Pokaż listę ${list.name}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => showList(list.id)}
-                        className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-3 text-left text-sm"
-                      >
-                        <ListIcon
-                          listId={list.id}
-                          className="text-muted-foreground"
-                        />
-                        <span className="min-w-0 flex-1 truncate">
-                          {list.name}
+            listsCollapsed ? null : (
+              <SortableLists lists={state.lists} onReorder={store.reorderLists}>
+                {state.lists.map((list) => (
+                  <SortableListRow
+                    key={list.id}
+                    id={list.id}
+                    name={list.name}
+                    className="group/row flex items-center gap-1.5 rounded-md hover:bg-muted"
+                  >
+                    {(handle) => (
+                      <>
+                        <span className="opacity-0 group-hover/row:opacity-100 focus-within:opacity-100">
+                          {handle}
                         </span>
-                        {openCount(list.id) > 0 && (
-                          <span className="text-xs text-muted-foreground tabular-nums">
-                            {openCount(list.id)}
+                        <input
+                          type="checkbox"
+                          className="size-4 shrink-0 accent-blue-600"
+                          checked={!hiddenListIds.includes(list.id)}
+                          onChange={(e) =>
+                            store.setListHidden(list.id, !e.target.checked)
+                          }
+                          aria-label={`Pokaż listę ${list.name}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => showList(list.id)}
+                          className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-3 text-left text-sm"
+                        >
+                          <ListIcon
+                            listId={list.id}
+                            className="text-muted-foreground"
+                          />
+                          <span className="min-w-0 flex-1 truncate">
+                            {list.name}
                           </span>
-                        )}
-                      </button>
-                    </>
-                  )}
-                </SortableListRow>
-              ))}
-            </SortableLists>
+                          {openCount(list.id) > 0 && (
+                            <span className="text-xs text-muted-foreground tabular-nums">
+                              {openCount(list.id)}
+                            </span>
+                          )}
+                        </button>
+                      </>
+                    )}
+                  </SortableListRow>
+                ))}
+              </SortableLists>
+            )
           ) : (
             state.lists.map((list) => (
               <button
@@ -312,6 +331,30 @@ export function TodoApp() {
             </button>
           )}
         </nav>
+        {isDesktop && USAGE_NOTES.length > 0 && (
+          <section
+            aria-labelledby="usage-notes-title"
+            className="px-4 pt-4 pb-6"
+          >
+            <h2
+              id="usage-notes-title"
+              className="mb-2 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase"
+            >
+              <InfoIcon className="size-3.5" />
+              Jak używać
+            </h2>
+            <ul className="space-y-2">
+              {USAGE_NOTES.map((note) => (
+                <li
+                  key={note}
+                  className="rounded-md border bg-background/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground"
+                >
+                  {note}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </aside>
 
       {showBoard ? (
